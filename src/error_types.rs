@@ -5,14 +5,14 @@ use std::{
 
 #[derive(Clone, Debug)]
 pub enum Error {
-	WrongSudoSeed,
+	WrongAcount,
 	SubxtError(&'static str),
 }
 
 impl Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match *self {
-			Self::WrongSudoSeed => write!(f, "Wrong sudo seed, failed to sign transaction."),
+			Self::WrongAcount => write!(f, "错误的账户"),
 			Self::SubxtError(e) => write!(f, "Error from subxt crate: {}", e),
 		}
 	}
@@ -21,7 +21,7 @@ impl Display for Error {
 impl error::Error for Error {
 	fn description(&self) -> &str {
 		match *self {
-			Self::WrongSudoSeed => "Wrong sudo seed, failed to sign transaction.",
+			Self::WrongAcount => "错误的账户",
 			Self::SubxtError(e) => e,
 		}
 	}

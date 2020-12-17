@@ -1,15 +1,19 @@
 use std::sync::Arc;
+use std::collections::HashMap;
 use subxt::{
-  PairSigner, DefaultNodeRuntime
+  PairSigner, DefaultNodeRuntime, system::{System, SystemEventsDecoder},
 };
-use sp_core::{sr25519::Pair, Pair as TraitPair};
+use codec::Decode;
+use sp_core::{sr25519::Pair, Pair as TraitPair, storage::StorageKey, hashing::twox_128};
 use core::marker::PhantomData;
 use std::error::Error;
 
 use super::super::error_types::Error as RuntimeError;
-use super::super::model::pacs_deposit::*;
+use super::super::model::{
+  pacs_deposit::*,
+  timestamp::*,
+};
 use super::super::client::Client;
-
 
 /// 医疗影像存证
 pub struct PacsDeposit {
@@ -25,16 +29,15 @@ impl PacsDeposit {
   }
 
   // 生成报告
-  pub async fn register_report(self, val: &str) -> Result<String, Box<dyn Error>>{
-    // let s = self.client.seed_get();
-    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongSudoSeed)?;
+  pub async fn register_report(&self, val: &str) -> Result<String, Box<dyn Error>>{
+    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
     let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
     
     // 构造请求参数
-    let call_args: RegisterReportArgs = serde_json::from_str(val)?;
+    let call_args: ReportData = serde_json::from_str(val)?;
     let mut props:Vec<ReportProperty> = Vec::new();
     for v in call_args.props {
       props.push(ReportProperty::new(v.name.clone().into_bytes(),v.value.clone().into_bytes()));
@@ -55,11 +58,179 @@ impl PacsDeposit {
     decoder.with_pacs_deposit();
 
     // 提交请求
-    let events = client.submit_and_watch_extrinsic(extrinsic, decoder).await?;
-    events.find_event::<ReportRegisteredEvent::<DefaultNodeRuntime>>()?.ok_or("No Event found or decoded.")?;
-    let block_hash = events.block;
+    let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
+    let mut block_hash: String = String::from("");
+    match event_result {
+      Ok(s) => {
+        block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
+      },
+      Err(e) => return Err(("调用错误".to_owned()+&(e.to_string())).into())
+    };
+    Ok(block_hash)
+  }
 
-    Ok(block_hash.to_string())
+  // 报告列表
+  pub async fn report_list(&self, count: u32, start_hash: Option<String>) -> Result<String, Box<dyn Error>>{
+    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
+    let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
+    
+    // 创建连接
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+    
+    // 查询数据key
+    let start_key: Option<StorageKey> = None;
+    if start_hash != None {
+      let hash_real = hex::decode(str::replace(&start_hash.unwrap(), "0x", "")).unwrap(); 
+    }
+    let keys = client.fetch_keys::<ReportsStore<_>>(count, None, None).await.unwrap();
+    let block_hash = client.block_hash(Some(1.into())).await?;
+
+    // 查询数据
+    let datas = client.query_storage(keys.clone(),block_hash.unwrap(),None).await.unwrap();
+
+    // 构建返回数据
+    let mut report_map = HashMap::<String,ReportDetail>::new();
+    let mut hashs: Vec<String> = Vec::new();
+    for key in keys {
+      let hash_key = "0x".to_string()+&hex::encode(&key.0);
+      report_map.insert(hash_key.clone(), ReportDetail{
+        key: hash_key.clone(),
+        curent_value: None,
+        history: Vec::new(),
+      });
+      hashs.push(hash_key.clone())
+    }
+
+    // 构建查询数据
+    for change_set in datas {
+      for (k, v) in change_set.changes {
+        if v != None {
+          let vdata = v.unwrap();
+          // 解码数据
+          let r: Report<
+            <DefaultNodeRuntime as System>::AccountId,
+            <DefaultNodeRuntime as Timestamp>::Moment
+          > = Decode::decode(&mut &vdata.0[..]).unwrap();
+
+          // 转换报告属性数据
+          let mut props:Vec<ReportPropertyData> = Vec::new();
+          if  r.props != None{
+            let rprops = r.props.unwrap();
+            for v2 in rprops {
+              props.push(ReportPropertyData{
+                name: String::from_utf8(v2.name).unwrap(),
+                value: String::from_utf8(v2.value).unwrap(),
+              });
+            }
+          }
+
+          // 构建最终数据
+          let rh = ReportDataH{
+            hash: change_set.block.to_string(),
+            value: ReportData{
+              // 报告id
+              id: String::from_utf8(r.id).unwrap(),
+              // 存证企业
+              com: Some(r.com.to_string()),
+              // 操作人员
+              operator: Some(r.operator.to_string()),
+              // 属性
+              props: props,
+            }
+          };
+          let hash_key = "0x".to_string()+&hex::encode(&k.0);
+          report_map.get_mut(&hash_key).unwrap().history.push(rh);
+        }
+      }
+    }
+    
+    let mut reports: Vec<ReportDetail> = Vec::new();
+    for key in hashs {
+      let mut data = report_map.get(&key).unwrap().clone();
+      data.curent_value = Some(data.history[data.history.len()-1].clone());
+      reports.push(data);
+    }
+
+    let serialized = serde_json::to_string(&reports).unwrap();
+    Ok(serialized)
+  }
+
+  // 报告详情
+  pub async fn report_detail_hash(self, hash: &str) -> Result<String, Box<dyn Error>>{
+    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
+    let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
+    
+    // 创建连接
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+
+    // 获取key
+    let hash_real = hex::decode(str::replace(hash, "0x", "")).unwrap(); 
+    let mut keys: Vec<StorageKey> = Vec::new();
+    keys.push(StorageKey(hash_real.clone()));
+    // 查询数据
+    // let data = client.fetch_unhashed::<
+    //   Report<
+    //     <DefaultNodeRuntime as System>::AccountId,
+    //     <DefaultNodeRuntime as Timestamp>::Moment
+    //   >
+    // >(StorageKey(hash_real.clone()),None).await.unwrap();
+    // 查询数据
+    let block_hash = client.block_hash(Some(1.into())).await?;
+    let datas = client.query_storage(keys.clone(),block_hash.unwrap(),None).await.unwrap();
+
+    // 构建返回数据
+    let mut report = ReportDetail{
+      key: "0x".to_string()+&hex::encode(hash_real.clone()),
+      curent_value: None,
+      history: Vec::new(),
+    };
+
+    // 构建查询数据
+    for change_set in datas {
+      for (k, v) in change_set.changes {
+        if v != None {
+          let vdata = v.unwrap();
+          // 解码数据
+          let r: Report<
+            <DefaultNodeRuntime as System>::AccountId,
+            <DefaultNodeRuntime as Timestamp>::Moment
+          > = Decode::decode(&mut &vdata.0[..]).unwrap();
+
+          // 转换报告属性数据
+          let mut props:Vec<ReportPropertyData> = Vec::new();
+          if  r.props != None{
+            let rprops = r.props.unwrap();
+            for v2 in rprops {
+              props.push(ReportPropertyData{
+                name: String::from_utf8(v2.name).unwrap(),
+                value: String::from_utf8(v2.value).unwrap(),
+              });
+            }
+          }
+
+          // 构建最终数据
+          let rh = ReportDataH{
+            hash: change_set.block.to_string(),
+            value: ReportData{
+              // 报告id
+              id: String::from_utf8(r.id).unwrap(),
+              // 存证企业
+              com: Some(r.com.to_string()),
+              // 操作人员
+              operator: Some(r.operator.to_string()),
+              // 属性
+              props: props,
+            }
+          };
+          let hash_key = "0x".to_string()+&hex::encode(&k.0);
+          report.history.push(rh);
+        }
+      }
+    }
+    report.curent_value = Some(report.history[report.history.len()-1].clone());
+
+    let serialized = serde_json::to_string(&report).unwrap();
+    Ok(serialized)
   }
 }
 

@@ -4,9 +4,9 @@ use skyvein_rust_api::{
     hander::{
         PacsDeposit
     },
-    model::{
-        pacs_deposit::RegisterReportArgs
-    }
+    // model::{
+    //     pacs_deposit::RegisterReportArgs
+    // }
 };
 
 
@@ -21,27 +21,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     // 影像存证
     let pacs = PacsDeposit::new(Arc::clone(&client));
     let res = pacs.register_report(
-        "{\"id\":\"11113\",\"props\":[{\"name\":\"xxx\",\"value\":\"222\"}]}"
+        "{\"id\":\"11113\",\"props\":[{\"name\":\"xxx33333333333333333\",\"value\":\"222\"}]}"
     ).await;
     match res {
-        Ok(s) => println!("Error reading file: {:?}", s),
-        Err(e) => println!("Error reading file: {:?}", e)
+        Ok(s) => println!("{:?}", s.as_str()),
+        Err(e) => println!("{:?}", e)
     }
 
-    // 影像存证
-    let pacs2 = PacsDeposit::new(Arc::clone(&client));
-    let res2 = pacs2.register_report(
-        "{\"id\":\"11113\",\"props\":[{\"name\":\"xxx\",\"value\":\"222\"}]}"
-    ).await;
-    match res2 {
-        Ok(s) => println!("Error reading file: {:?}", s),
-        Err(e) => println!("Error reading file: {:?}", e)
-    }
+    // // 影像存证
+    // let pacs2 = PacsDeposit::new(Arc::clone(&client));
+    // let res2 = pacs2.register_report(
+    //     "{\"id\":\"11113\",\"props\":[{\"name\":\"8888888888888xxx\",\"value\":\"222\"}]}"
+    // ).await;
+    // match res2 {
+    //     Ok(s) => println!("{:?}", s),
+    //     Err(e) => println!("{:?}", e)
+    // }
 
-    // 影像列表
-    
-    
-    // 影像详情
+    // // 影像列表
+    // let res3 = pacs.report_list(10,None).await;
+    // match res3 {
+    //     Ok(s) => println!("{:?}", s),
+    //     Err(e) => println!("{:?}", e)
+    // }
+
+    // // 影像详情
+    // let res4 = pacs.report_detail_hash(
+    //     "4a02cb5579ba624d1cb4d7f6bf911561b262e9238fa402540c250bc3f5d6188decd267edcb4ffed9d5c66510f6e3f593143131313133",
+    // ).await;
+    // match res4 {
+    //     Ok(s) => println!("{:?}", s),
+    //     Err(e) => println!("{:?}", e)
+    // }
 
     Ok(())
 }

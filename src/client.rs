@@ -1,5 +1,12 @@
+use subxt::{
+  system::System,
+  EventsDecoder,
+  Metadata,
+  DefaultNodeRuntime,
+};
+
 /// 医疗影像存证
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Client {
   // 连接
   uri: String,
@@ -20,8 +27,15 @@ impl Client {
       key: "".to_string(),
     }
   }
+
   pub fn seed_get(&self) -> String {
     return self.seed.clone()
+  }
+
+  pub fn create_decoder(metadata: Metadata) -> EventsDecoder<DefaultNodeRuntime> {
+    let mut decoder = EventsDecoder::<DefaultNodeRuntime>::new(metadata);
+    decoder.register_type_size::<[u8; 16]>("ReportId");
+    decoder
   }
 }
 

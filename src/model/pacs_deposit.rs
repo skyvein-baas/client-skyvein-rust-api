@@ -1,17 +1,25 @@
 use subxt::{
   system::{System, SystemEventsDecoder},
-  Call, Event,
-  DefaultNodeRuntime, 
+  Call, Event, Store,
+  DefaultNodeRuntime,
+  balances::{Balances, BalancesEventsDecoder},
 };
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+use super::timestamp::{Timestamp, TimestampEventsDecoder};
 
-/// 模块定义
+// 模块定义
 #[subxt::module]
-pub trait PacsDeposit: System {}
-impl PacsDeposit for DefaultNodeRuntime {}
+pub trait PacsDeposit: System + Balances + Timestamp {
+  // type ReportId: Encode + Decode + PartialEq + Eq + Default + Send + Sync + 'static;
+}
+impl PacsDeposit for DefaultNodeRuntime {
+  // type ReportId = ReportId;
+}
 
+// 类型
 pub type ReportId = Vec<u8>;
 pub type PropName = Vec<u8>;
 pub type PropValue = Vec<u8>;
@@ -25,8 +33,6 @@ pub struct Report<AccountId, Moment> {
   pub com: AccountId,
   // 操作人员
   pub operator: AccountId,
-  // 用户手机
-  // 用户身份证
   // 属性列表
   pub props: Option<Vec<ReportProperty>>,
   // 存证时间
@@ -48,7 +54,7 @@ impl ReportProperty {
   }
 }
 
-/// Execute a transaction with sudo permissions.
+// 报告注册参数
 #[derive(Clone, Debug, Eq, PartialEq, Call, Encode)]
 pub struct RegisterReportCall<T: PacsDeposit> {
   pub id: ReportId,
@@ -56,20 +62,24 @@ pub struct RegisterReportCall<T: PacsDeposit> {
   pub _runtime: PhantomData<T>,
 }
 
-// 存证属性
+// 报告属性参数
+#[derive(Clone, Debug, PartialEq, Decode, Encode, Deserialize, Serialize)]
+pub struct ReportData {
+  // 报告id
+  pub id: String,
+  // 存证企业
+  pub com: Option<String>,
+  // 操作人员
+  pub operator: Option<String>,
+  // 属性
+  pub props: Vec<ReportPropertyData>,
+}
 #[derive(Clone, Debug, Eq, PartialEq, Decode, Encode, Deserialize, Serialize)]
-pub struct ReportPropertyArgs {
+pub struct ReportPropertyData {
   // 属性名
   pub name: String,
   // 属性值
   pub value: String,
-}
-#[derive(Clone, Debug, PartialEq, Decode, Encode, Deserialize, Serialize)]
-pub struct RegisterReportArgs {
-  // 报告id
-  pub id: String,
-  // 属性
-  pub props: Vec<ReportPropertyArgs>,
 }
 
 // 成功生成报告
@@ -77,5 +87,44 @@ pub struct RegisterReportArgs {
 pub struct ReportRegisteredEvent<T: PacsDeposit> {
   pub who: <T as System>::AccountId,
   pub com: <T as System>::AccountId,
-  pub id: ReportId,
+  pub id: Vec<u8>,
+}
+
+// 报告列表
+#[derive(Clone, Debug, Eq, PartialEq, Store, Encode)]
+pub struct ComOfReportStore<'a, T: PacsDeposit> {
+  #[store(returns = T::AccountId)]
+  pub report_id: &'a ReportId,
+  pub _phantom: PhantomData<T>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Store, Encode)]
+pub struct ReportsStore<'a, T: PacsDeposit> {
+  #[store(returns = Option<Report<T::AccountId, <T as Timestamp>::Moment>>)]
+  pub report_id: &'a ReportId,
+  pub _phantom: PhantomData<T>,
+}
+
+// 报告提交记录
+#[derive(Debug, Clone, Decode, Encode, Deserialize, Serialize)]
+pub struct ReportDataH{
+  pub hash: String,
+  pub value: ReportData,
+}
+
+// 报告详情
+#[derive(Debug, Clone, Decode, Encode, Deserialize, Serialize)]
+pub struct ReportDetail{
+  // 数据唯一值
+  pub key: String,
+  // 当前值
+  pub curent_value: Option<ReportDataH>,
+  // 历史记录
+  pub history: Vec<ReportDataH>,
+}
+
+// 报告列表
+#[derive(Debug, Clone, Decode, Encode, Deserialize, Serialize)]
+pub struct ReportList{
+  pub list: Vec<ReportDetail>,
 }

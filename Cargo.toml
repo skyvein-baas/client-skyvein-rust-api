@@ -18,6 +18,8 @@ sp-runtime= "2.0.0"
 subxt = { version = "0.13", package = "substrate-subxt" }
 tokio = { version = "0.3.3", features = ["macros", "rt-multi-thread"] }
 async-std = { version = "1.6.4", features = ["attributes"] }
+log = "0.4.11"
+hex = "0.4.2"
 
 [profile.release]
 opt-level = 3 # 3
