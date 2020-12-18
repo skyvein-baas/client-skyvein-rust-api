@@ -1,5 +1,4 @@
 use subxt::{
-  system::System,
   EventsDecoder,
   Metadata,
   DefaultNodeRuntime,

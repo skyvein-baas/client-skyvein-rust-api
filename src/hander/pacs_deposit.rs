@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use subxt::{
-  PairSigner, DefaultNodeRuntime, system::{System, SystemEventsDecoder},
+  PairSigner, DefaultNodeRuntime, system::{System},
 };
 use codec::Decode;
-use sp_core::{sr25519::Pair, Pair as TraitPair, storage::StorageKey, hashing::twox_128};
+use sp_core::{sr25519::Pair, Pair as TraitPair, storage::StorageKey};
 use core::marker::PhantomData;
 use std::error::Error;
 
@@ -29,7 +29,7 @@ impl PacsDeposit {
   }
 
   // 生成报告
-  pub async fn register_report(&self, val: &str) -> Result<String, Box<dyn Error>>{
+  pub async fn register_report(&self, call_args: ReportData) -> Result<String, Box<dyn Error>>{
     let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
@@ -37,7 +37,6 @@ impl PacsDeposit {
     let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
     
     // 构造请求参数
-    let call_args: ReportData = serde_json::from_str(val)?;
     let mut props:Vec<ReportProperty> = Vec::new();
     for v in call_args.props {
       props.push(ReportProperty::new(v.name.clone().into_bytes(),v.value.clone().into_bytes()));
@@ -59,30 +58,33 @@ impl PacsDeposit {
 
     // 提交请求
     let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
-    let mut block_hash: String = String::from("");
+    #[allow(unused_assignments)]
+    let mut block_hash = String::from("");
     match event_result {
       Ok(s) => {
         block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
       },
-      Err(e) => return Err(("调用错误".to_owned()+&(e.to_string())).into())
+      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into())
     };
     Ok(block_hash)
   }
 
   // 报告列表
-  pub async fn report_list(&self, count: u32, start_hash: Option<String>) -> Result<String, Box<dyn Error>>{
-    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
-    let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
+  pub async fn report_list(&self, count: u32, start_hash: Option<String>) -> Result<Vec<ReportDetail>, Box<dyn Error>>{
+    // let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
+    // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
     let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
     
     // 查询数据key
-    let start_key: Option<StorageKey> = None;
+    let mut start_key: Option<StorageKey> = None;
     if start_hash != None {
-      let hash_real = hex::decode(str::replace(&start_hash.unwrap(), "0x", "")).unwrap(); 
+      start_key = Some(StorageKey(
+        hex::decode(str::replace(&start_hash.unwrap(), "0x", "")).unwrap(),
+      )); 
     }
-    let keys = client.fetch_keys::<ReportsStore<_>>(count, None, None).await.unwrap();
+    let keys = client.fetch_keys::<ReportsStore<_>>(count, start_key, None).await.unwrap();
     let block_hash = client.block_hash(Some(1.into())).await?;
 
     // 查询数据
@@ -92,13 +94,13 @@ impl PacsDeposit {
     let mut report_map = HashMap::<String,ReportDetail>::new();
     let mut hashs: Vec<String> = Vec::new();
     for key in keys {
-      let hash_key = "0x".to_string()+&hex::encode(&key.0);
-      report_map.insert(hash_key.clone(), ReportDetail{
-        key: hash_key.clone(),
+      let _hash_key = "0x".to_string()+&hex::encode(&key.0);
+      report_map.insert(_hash_key.clone(), ReportDetail{
+        key: _hash_key.clone(),
         curent_value: None,
         history: Vec::new(),
       });
-      hashs.push(hash_key.clone())
+      hashs.push(_hash_key.clone())
     }
 
     // 构建查询数据
@@ -151,22 +153,36 @@ impl PacsDeposit {
       reports.push(data);
     }
 
-    let serialized = serde_json::to_string(&reports).unwrap();
-    Ok(serialized)
+    Ok(reports)
   }
 
   // 报告详情
-  pub async fn report_detail_hash(self, hash: &str) -> Result<String, Box<dyn Error>>{
-    let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
-    let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
+  pub async fn report_detail_hash(&self, hash: &str) -> Result<ReportDetail, Box<dyn Error>>{
+    // let signer = Pair::from_string(&self.client.seed_get(), None).map_err(|_| RuntimeError::WrongAcount)?;
+    // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
     let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
 
     // 获取key
     let hash_real = hex::decode(str::replace(hash, "0x", "")).unwrap(); 
+    return self._report_detail(StorageKey(hash_real), client).await
+  }
+
+  // 报告详情
+  pub async fn report_detail(&self, id: &str) -> Result<ReportDetail, Box<dyn Error>>{
+    // 创建连接
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+
+    // 获取key
+    let metadata = client.metadata();
+    let key = metadata.module("PacsDeposit")?.storage("Reports")?.map()?.key(&id.as_bytes().to_vec(),);
+    return self._report_detail(key, client).await
+  }
+
+  async fn _report_detail(&self, hash_real: StorageKey, client: subxt::Client::<DefaultNodeRuntime>) -> Result<ReportDetail, Box<dyn Error>>{
     let mut keys: Vec<StorageKey> = Vec::new();
-    keys.push(StorageKey(hash_real.clone()));
+    keys.push(hash_real.clone());
     // 查询数据
     // let data = client.fetch_unhashed::<
     //   Report<
@@ -180,14 +196,14 @@ impl PacsDeposit {
 
     // 构建返回数据
     let mut report = ReportDetail{
-      key: "0x".to_string()+&hex::encode(hash_real.clone()),
+      key: "0x".to_string()+&hex::encode(hash_real.clone().0),
       curent_value: None,
       history: Vec::new(),
     };
 
     // 构建查询数据
     for change_set in datas {
-      for (k, v) in change_set.changes {
+      for (_k, v) in change_set.changes {
         if v != None {
           let vdata = v.unwrap();
           // 解码数据
@@ -222,15 +238,12 @@ impl PacsDeposit {
               props: props,
             }
           };
-          let hash_key = "0x".to_string()+&hex::encode(&k.0);
           report.history.push(rh);
         }
       }
     }
     report.curent_value = Some(report.history[report.history.len()-1].clone());
-
-    let serialized = serde_json::to_string(&report).unwrap();
-    Ok(serialized)
+    Ok(report)
   }
 }
 

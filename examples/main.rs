@@ -4,9 +4,9 @@ use skyvein_rust_api::{
     hander::{
         PacsDeposit
     },
-    // model::{
-    //     pacs_deposit::RegisterReportArgs
-    // }
+    model::{
+        pacs_deposit::*,
+    }
 };
 
 
@@ -20,9 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
     // 影像存证
     let pacs = PacsDeposit::new(Arc::clone(&client));
-    let res = pacs.register_report(
-        "{\"id\":\"11113\",\"props\":[{\"name\":\"xxx33333333333333333\",\"value\":\"222\"}]}"
-    ).await;
+    let call_args: ReportData = serde_json::from_str("{\"id\":\"11113\",\"props\":[{\"name\":\"xxx33333333333333333\",\"value\":\"222\"}]}")?;
+    let res = pacs.register_report(call_args.clone()).await;
     match res {
         Ok(s) => println!("{:?}", s.as_str()),
         Err(e) => println!("{:?}", e)
@@ -53,6 +52,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     //     Ok(s) => println!("{:?}", s),
     //     Err(e) => println!("{:?}", e)
     // }
+
+    // 影像详情
+    let res4 = pacs.report_detail(
+        "11113",
+    ).await;
+    match res4 {
+        Ok(s) => println!("{:?}", s),
+        Err(e) => println!("{:?}", e)
+    }
 
     Ok(())
 }
