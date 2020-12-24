@@ -34,7 +34,7 @@ impl PacsDeposit {
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
     
     // 构造请求参数
     let mut props:Vec<ReportProperty> = Vec::new();
@@ -75,7 +75,7 @@ impl PacsDeposit {
     // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
     
     // 查询数据key
     let mut start_key: Option<StorageKey> = None;
@@ -162,7 +162,7 @@ impl PacsDeposit {
     // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
 
     // 获取key
     let hash_real = hex::decode(str::replace(hash, "0x", "")).unwrap(); 
@@ -172,7 +172,7 @@ impl PacsDeposit {
   // 报告详情
   pub async fn report_detail(&self, id: &str) -> Result<ReportDetail, Box<dyn Error>>{
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
 
     // 获取key
     let metadata = client.metadata();

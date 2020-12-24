@@ -8,7 +8,7 @@ use subxt::{
 #[derive(Debug, Clone)]
 pub struct Client {
   // 连接
-  uri: String,
+  pub uri: String,
   // 用户种子
   pub seed: String,
   // 用户账户

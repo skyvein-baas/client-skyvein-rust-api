@@ -14,13 +14,13 @@ use skyvein_rust_api::{
 async fn main() -> Result<(), Box<dyn std::error::Error>>{
     // 创建连接
     let client:Arc<Client> = Arc::new(Client::new(
-        "ws://127.0.0.1:9944".to_string(),
+        "ws://122.224.183.34:32186".to_string(),
         "near rotate couch giant neck diary token roast come embark doll chaos".to_string()
     ));
 
     // 影像存证
     let pacs = PacsDeposit::new(Arc::clone(&client));
-    let call_args: ReportData = serde_json::from_str("{\"id\":\"11113\",\"props\":[{\"name\":\"xxx33333333333333333\",\"value\":\"222\"}]}")?;
+    let call_args: ReportData = serde_json::from_str("{\"id\":\"11114\",\"props\":[{\"name\":\"xxx33333333333333333\",\"value\":\"222\"}]}")?;
     let res = pacs.register_report(call_args.clone()).await;
     match res {
         Ok(s) => println!("{:?}", s.as_str()),
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
     // 影像详情
     let res4 = pacs.report_detail(
-        "11113",
+        "11114",
     ).await;
     match res4 {
         Ok(s) => println!("{:?}", s),
