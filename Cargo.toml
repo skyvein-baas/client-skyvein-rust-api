@@ -28,3 +28,6 @@ opt-level = 3 # 3
 name = "main"
 path = "examples/main.rs"
 
+[[example]]
+name = "trace_source"
+path = "examples/trace_source.rs"

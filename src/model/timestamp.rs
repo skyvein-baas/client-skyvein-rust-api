@@ -31,3 +31,19 @@ pub struct NowStore<T: Timestamp> {
     #[store(returns = T::Moment)]
     pub _runtime: PhantomData<T>,
 }
+
+/// Impls `Default::default` for some types that have a `_runtime` field of type
+/// `PhantomData` as their only field.
+macro_rules! default_impl {
+    ($name:ident) => {
+        impl<T: Timestamp> Default for $name<T> {
+            fn default() -> Self {
+                Self {
+                    _runtime: PhantomData,
+                }
+            }
+        }
+    };
+}
+
+default_impl!(NowStore);
