@@ -1,8 +1,8 @@
-use subxt::{
-  EventsDecoder,
-  Metadata,
-  DefaultNodeRuntime,
-};
+// use subxt::{
+//   EventsDecoder,
+//   Metadata,
+//   DefaultNodeRuntime,
+// };
 
 /// 医疗影像存证
 #[derive(Debug, Clone)]
@@ -31,10 +31,10 @@ impl Client {
     return self.seed.clone()
   }
 
-  pub fn create_decoder(metadata: Metadata) -> EventsDecoder<DefaultNodeRuntime> {
-    let mut decoder = EventsDecoder::<DefaultNodeRuntime>::new(metadata);
-    decoder.register_type_size::<[u8; 16]>("ReportId");
-    decoder
-  }
+  // pub fn create_decoder(metadata: Metadata) -> EventsDecoder<DefaultNodeRuntime> {
+  //   let mut decoder = EventsDecoder::<DefaultNodeRuntime>::new(metadata);
+  //   decoder.register_type_size::<[u8; 16]>("ReportId");
+  //   decoder
+  // }
 }
 

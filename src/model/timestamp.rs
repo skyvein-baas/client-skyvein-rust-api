@@ -1,5 +1,5 @@
 use subxt::{
-  system::{System, SystemEventsDecoder}, Store,
+  system::{System}, Store,
   DefaultNodeRuntime,
 };
 use sp_runtime::{

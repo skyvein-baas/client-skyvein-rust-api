@@ -1,11 +1,12 @@
 use std::sync::Arc;
+use core::marker::PhantomData;
 use std::collections::HashMap;
 use subxt::{
   PairSigner, DefaultNodeRuntime, system::{System},
 };
-use codec::Decode;
+use codec::{Decode};
 use sp_core::{sr25519::Pair, Pair as TraitPair, storage::StorageKey};
-use core::marker::PhantomData;
+
 use std::error::Error;
 
 use super::super::error_types::Error as RuntimeError;
@@ -34,7 +35,10 @@ impl PacsDeposit {
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      // register_type_size::<sp_core::OpaquePeerId>("PeerId").
+      skip_type_sizes_check().
+      build().await?;
     
     // 构造请求参数
     let mut props:Vec<ReportProperty> = Vec::new();
@@ -52,12 +56,13 @@ impl PacsDeposit {
     // 签名
     let extrinsic = client.create_signed(report_call, &signer).await?;
 
-    // 构造错误接受
-    let mut decoder = client.events_decoder::<RegisterReportCall<DefaultNodeRuntime>>();
-    decoder.with_pacs_deposit();
-
+    // // 构造错误接受
+    // let mut decoder = client.events_decoder::<RegisterReportCall<DefaultNodeRuntime>>();
+    // decoder.with_pacs_deposit();
+    // let event_result = client.rpc.submit_and_watch_extrinsic(extrinsic, decoder).await;
     // 提交请求
-    let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
+    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
+    // let event_result = client.register_report_and_watch(&signer, call_args.id.clone().into_bytes(), Some(props)).await;
     #[allow(unused_assignments)]
     let mut block_hash = String::from("");
     match event_result {
@@ -75,7 +80,9 @@ impl PacsDeposit {
     // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      skip_type_sizes_check().
+      build().await?;
     
     // 查询数据key
     let mut start_key: Option<StorageKey> = None;
@@ -162,7 +169,9 @@ impl PacsDeposit {
     // let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer);
     
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      skip_type_sizes_check().
+      build().await?;
 
     // 获取key
     let hash_real = hex::decode(str::replace(hash, "0x", "")).unwrap(); 

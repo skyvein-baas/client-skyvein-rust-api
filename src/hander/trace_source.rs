@@ -33,7 +33,9 @@ impl TraceSource {
   	let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer_key);
 
   	// 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      skip_type_sizes_check().
+      build().await?;
     // 构造请求参数
     let mut props:Vec<ProductProperty> = Vec::new();
     for v in call_args.props {
@@ -50,13 +52,14 @@ impl TraceSource {
     // 签名
     let extrinsic = client.create_signed(product_call, &signer).await?;
 
-    // 构造错误接受
-    let mut decoder = client.events_decoder::<RegisterProductCall<DefaultNodeRuntime>>();
-    // decoder.register_type_size::<ProductId>("ProductId");
-    decoder.with_trace_source();
+    // // 构造错误接受
+    // let mut decoder = client.events_decoder::<RegisterProductCall<DefaultNodeRuntime>>();
+    // // decoder.register_type_size::<ProductId>("ProductId");
+    // decoder.with_trace_source();
 
     // 提交请求
-    let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
+    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
+    // let event_result = client.register_product_and_watch(&signer, call_args.id.clone().into_bytes(), Some(props)).await;
     #[allow(unused_assignments)]
     let mut block_hash = String::from("");
     match event_result {
@@ -74,7 +77,9 @@ impl TraceSource {
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer_key);
 
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      skip_type_sizes_check().
+      build().await?;
     // 构造请求参数
     let mut products:Vec<ProductId> = Vec::new();
     for v in call_args.products {
@@ -91,13 +96,14 @@ impl TraceSource {
     // 签名
     let extrinsic = client.create_signed(shipment_call, &signer).await?;
 
-    // 构造错误接受
-    let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
-    decoder.register_type_size::<u128>("u128");
-    decoder.with_trace_source();
+    // // 构造错误接受
+    // let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
+    // decoder.register_type_size::<u128>("u128");
+    // decoder.with_trace_source();
 
     // 提交请求
-    let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
+    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
+    // let event_result = client.register_shipment_and_watch(&signer, call_args.id.clone().into_bytes(), products).await;
     #[allow(unused_assignments)]
     let mut block_hash = String::from("");
     match event_result {
@@ -115,9 +121,9 @@ impl TraceSource {
     let signer = PairSigner::<DefaultNodeRuntime, Pair>::new(signer_key);
 
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
-    // 构造请求参数
-
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+      skip_type_sizes_check().
+      build().await?;
 
     // 构造请求
     let shipment_call = TrackShipmentCall::<DefaultNodeRuntime> {
@@ -142,13 +148,13 @@ impl TraceSource {
     // 签名
     let extrinsic = client.create_signed(shipment_call, &signer).await?;
 
-    // 构造错误接受
-    let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
-    decoder.register_type_size::<u128>("u128");
-    decoder.with_trace_source();
+    // // 构造错误接受
+    // let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
+    // decoder.register_type_size::<u128>("u128");
+    // decoder.with_trace_source();
 
     // 提交请求
-    let event_result = client.submit_and_watch_extrinsic(extrinsic, decoder).await;
+    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
     #[allow(unused_assignments)]
     let mut block_hash = String::from("");
     match event_result {
