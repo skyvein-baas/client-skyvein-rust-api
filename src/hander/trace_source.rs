@@ -1,6 +1,9 @@
+
 use std::sync::Arc;
 use subxt::{
+  UncheckedExtrinsic,
   PairSigner, DefaultNodeRuntime,
+  Error as xtError, 
 };
 
 use sp_core::{sr25519::Pair, Pair as TraitPair};
@@ -11,6 +14,7 @@ use std::time;
 use super::super::error_types::Error as RuntimeError;
 use super::super::model::{
   trace_source::*,
+  feeless::*,
 };
 use super::super::client::Client;
 
@@ -18,13 +22,21 @@ use super::super::client::Client;
 pub struct TraceSource {
   // 连接
   client: Arc<Client>,
+  // 无费模式
+  feeless: bool,
 }
 
 impl TraceSource {
 	pub fn new(c: Arc<Client>) -> Self {
     TraceSource {
       client: c,
+      feeless: false,
     }
+  }
+
+  pub fn feeless(mut self) -> Self {
+    self.feeless = true;
+    self
   }
 
   // 注册产品
@@ -49,25 +61,38 @@ impl TraceSource {
       _runtime: PhantomData,
     };
 
-    // 签名
-    let extrinsic = client.create_signed(product_call, &signer).await?;
-
-    // // 构造错误接受
-    // let mut decoder = client.events_decoder::<RegisterProductCall<DefaultNodeRuntime>>();
-    // // decoder.register_type_size::<ProductId>("ProductId");
-    // decoder.with_trace_source();
-
-    // 提交请求
-    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
-    // let event_result = client.register_product_and_watch(&signer, call_args.id.clone().into_bytes(), Some(props)).await;
+    let extrinsic: UncheckedExtrinsic<DefaultNodeRuntime>;
     #[allow(unused_assignments)]
     let mut block_hash = String::from("");
+    if !self.feeless {
+      // 签名
+      extrinsic = client.create_signed(product_call, &signer).await?;
+    } else {
+      let product_proposal = client.encode(product_call)?;
+
+      let feeless_call = FeelessCall::<DefaultNodeRuntime> {
+        call: &product_proposal,
+        _runtime: PhantomData,
+      };
+      // 签名
+      extrinsic = client.create_signed(feeless_call, &signer).await?;
+    }
+    // 提交请求
+    let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
+    // let event_result = client.feeless_and_watch(&signer, &product_proposal).await;
     match event_result {
       Ok(s) => {
         block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
       },
-      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into())
+      Err(xtError::Runtime(e)) => {
+        let emain = e.to_string();
+        let estr: Vec<&str> = emain.trim_start_matches("Runtime module error:").split(" from ").collect();
+        return Err(estr[0].trim_start_matches(" ").into())
+      },
+      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into()),
     };
+    
+    
     Ok(block_hash)
   }
 
@@ -93,24 +118,36 @@ impl TraceSource {
       _runtime: PhantomData,
     };
 
-    // 签名
-    let extrinsic = client.create_signed(shipment_call, &signer).await?;
+    let extrinsic: UncheckedExtrinsic<DefaultNodeRuntime>;
+    #[allow(unused_assignments)]
+    let mut block_hash = String::from("");
+    if !self.feeless {
+      // 签名
+      extrinsic = client.create_signed(shipment_call, &signer).await?;
+    } else {
+      let product_proposal = client.encode(shipment_call)?;
 
-    // // 构造错误接受
-    // let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
-    // decoder.register_type_size::<u128>("u128");
-    // decoder.with_trace_source();
+      let feeless_call = FeelessCall::<DefaultNodeRuntime> {
+        call: &product_proposal,
+        _runtime: PhantomData,
+      };
+      // 签名
+      extrinsic = client.create_signed(feeless_call, &signer).await?;
+    }
 
     // 提交请求
     let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
     // let event_result = client.register_shipment_and_watch(&signer, call_args.id.clone().into_bytes(), products).await;
-    #[allow(unused_assignments)]
-    let mut block_hash = String::from("");
     match event_result {
       Ok(s) => {
         block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
       },
-      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into())
+      Err(xtError::Runtime(e)) => {
+        let emain = e.to_string();
+        let estr: Vec<&str> = emain.trim_start_matches("Runtime module error:").split(" from ").collect();
+        return Err(estr[0].trim_start_matches(" ").into())
+      },
+      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into()),
     };
     Ok(block_hash)
   }
@@ -145,23 +182,35 @@ impl TraceSource {
       },
     };
 
-    // 签名
-    let extrinsic = client.create_signed(shipment_call, &signer).await?;
+    let extrinsic: UncheckedExtrinsic<DefaultNodeRuntime>;
+    #[allow(unused_assignments)]
+    let mut block_hash = String::from("");
+    if !self.feeless {
+      // 签名
+      extrinsic = client.create_signed(shipment_call, &signer).await?;
+    } else {
+      let product_proposal = client.encode(shipment_call)?;
 
-    // // 构造错误接受
-    // let mut decoder = client.events_decoder::<RegisterShipmentCall<DefaultNodeRuntime>>();
-    // decoder.register_type_size::<u128>("u128");
-    // decoder.with_trace_source();
+      let feeless_call = FeelessCall::<DefaultNodeRuntime> {
+        call: &product_proposal,
+        _runtime: PhantomData,
+      };
+      // 签名
+      extrinsic = client.create_signed(feeless_call, &signer).await?;
+    }
 
     // 提交请求
     let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
-    #[allow(unused_assignments)]
-    let mut block_hash = String::from("");
     match event_result {
       Ok(s) => {
         block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
       },
-      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into())
+      Err(xtError::Runtime(e)) => {
+        let emain = e.to_string();
+        let estr: Vec<&str> = emain.trim_start_matches("Runtime module error:").split(" from ").collect();
+        return Err(estr[0].trim_start_matches(" ").into())
+      },
+      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into()),
     };
     Ok(block_hash)
   }

@@ -2,7 +2,9 @@ use std::sync::Arc;
 use core::marker::PhantomData;
 use std::collections::HashMap;
 use subxt::{
+  UncheckedExtrinsic,
   PairSigner, DefaultNodeRuntime, system::{System},
+  Error as xtError, 
 };
 use codec::{Decode};
 use sp_core::{sr25519::Pair, Pair as TraitPair, storage::StorageKey};
@@ -13,6 +15,7 @@ use super::super::error_types::Error as RuntimeError;
 use super::super::model::{
   pacs_deposit::*,
   timestamp::*,
+  feeless::*,
 };
 use super::super::client::Client;
 
@@ -20,13 +23,21 @@ use super::super::client::Client;
 pub struct PacsDeposit {
   // 连接
   client: Arc<Client>,
+  // 无费模式
+  feeless: bool,
 }
 
 impl PacsDeposit {
   pub fn new(c: Arc<Client>) -> Self {
     PacsDeposit {
       client: c,
+      feeless: false,
     }
+  }
+
+  pub fn feeless(mut self) -> Self {
+    self.feeless = true;
+    self
   }
 
   // 生成报告
@@ -53,8 +64,22 @@ impl PacsDeposit {
       _runtime: PhantomData,
     };
 
-    // 签名
-    let extrinsic = client.create_signed(report_call, &signer).await?;
+    let extrinsic: UncheckedExtrinsic<DefaultNodeRuntime>;
+    #[allow(unused_assignments)]
+    let mut block_hash = String::from("");
+    if !self.feeless {
+      // 签名
+      extrinsic = client.create_signed(report_call, &signer).await?;
+    } else {
+      let report_proposal = client.encode(report_call)?;
+
+      let feeless_call = FeelessCall::<DefaultNodeRuntime> {
+        call: &report_proposal,
+        _runtime: PhantomData,
+      };
+      // 签名
+      extrinsic = client.create_signed(feeless_call, &signer).await?;
+    }
 
     // // 构造错误接受
     // let mut decoder = client.events_decoder::<RegisterReportCall<DefaultNodeRuntime>>();
@@ -63,13 +88,16 @@ impl PacsDeposit {
     // 提交请求
     let event_result = client.submit_and_watch_extrinsic(extrinsic).await;
     // let event_result = client.register_report_and_watch(&signer, call_args.id.clone().into_bytes(), Some(props)).await;
-    #[allow(unused_assignments)]
-    let mut block_hash = String::from("");
     match event_result {
       Ok(s) => {
         block_hash = "0x".to_string()+&hex::encode(&s.block[..].to_vec());
       },
-      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into())
+      Err(xtError::Runtime(e)) => {
+        let emain = e.to_string();
+        let estr: Vec<&str> = emain.trim_start_matches("Runtime module error:").split(" from ").collect();
+        return Err(estr[0].trim_start_matches(" ").into())
+      },
+      Err(e) => return Err(("调用错误:".to_owned()+&(e.to_string())).into()),
     };
     Ok(block_hash)
   }
@@ -181,7 +209,9 @@ impl PacsDeposit {
   // 报告详情
   pub async fn report_detail(&self, id: &str) -> Result<ReportDetail, Box<dyn Error>>{
     // 创建连接
-    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).build().await?;
+    let client = subxt::ClientBuilder::<DefaultNodeRuntime>::new().set_url(self.client.uri.as_str()).
+    skip_type_sizes_check().
+    build().await?;
 
     // 获取key
     let metadata = client.metadata();

@@ -15,11 +15,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     // 创建连接
     let client:Arc<Client> = Arc::new(Client::new(
         "ws://localhost:9944".to_string(),
-        "afford soft various cabbage census ship wild sample cute split soap sad".to_string()
+        "melt draft shy egg tomorrow there below flash patient code butter blind".to_string(),
+        // "afford soft various cabbage census ship wild sample cute split soap sad".to_string(),
     ));
 
     // 注册产品
-    let tsrc = TraceSource::new(Arc::clone(&client));
+    let tsrc = TraceSource::new(Arc::clone(&client)).feeless();
     let call_args: ProductData = serde_json::from_str("{\"id\":\"11120\",\"props\":[{\"name\":\"name1\",\"value\":\"222\"}]}")?;
     let res = tsrc.register_product(call_args.clone()).await;
     match res {

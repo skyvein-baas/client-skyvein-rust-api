@@ -32,3 +32,7 @@ path = "examples/main.rs"
 [[example]]
 name = "trace_source"
 path = "examples/trace_source.rs"
+
+[[example]]
+name = "feeless"
+path = "examples/feeless.rs"
