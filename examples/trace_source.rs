@@ -19,8 +19,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
         // "afford soft various cabbage census ship wild sample cute split soap sad".to_string(),
     ));
 
-    // 注册产品
     let tsrc = TraceSource::new(Arc::clone(&client)).feeless();
+    // 注册产品
     let call_args: ProductData = serde_json::from_str("{\"id\":\"11120\",\"props\":[{\"name\":\"name1\",\"value\":\"222\"}]}")?;
     let res = tsrc.register_product(call_args.clone()).await;
     match res {
