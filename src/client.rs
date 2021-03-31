@@ -4,7 +4,7 @@
 //   DefaultNodeRuntime,
 // };
 
-/// 医疗影像存证
+/// 区块链连接
 #[derive(Debug, Clone)]
 pub struct Client {
   // 连接
@@ -28,7 +28,7 @@ impl Client {
   }
 
   pub fn seed_get(&self) -> String {
-    return self.seed.clone()
+    return self.seed.clone();
   }
 
   // pub fn create_decoder(metadata: Metadata) -> EventsDecoder<DefaultNodeRuntime> {
@@ -37,4 +37,3 @@ impl Client {
   //   decoder
   // }
 }
-
