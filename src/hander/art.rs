@@ -60,8 +60,7 @@ impl Art {
     }
 
     // 构造请求
-    let owner =
-      sp_runtime::AccountId32::from_str("5G9VdMwXvzza9pS8qE8ZHJk3CheHW9uucBn9ngW4C1gmmzpv")?;
+    let owner = sp_runtime::AccountId32::from_str(&call_args.owner)?;
     let art_call = RegisterArtCall::<DefaultNodeRuntime> {
       id: call_args.id.clone().into_bytes(),
       props: props,
